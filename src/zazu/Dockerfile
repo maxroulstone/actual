@@ -10,7 +10,6 @@ RUN npm install
 
 # Copy source code
 COPY src ./src
-COPY data ./data
 
 # Build the project
 RUN npm run build
