@@ -1,0 +1,65 @@
+services:
+  actual:
+    image: actualbudget/actual-server:latest
+    container_name: actual_server
+    ports:
+      - "5006:5006"
+    volumes:
+      - ./actual-data:/data
+    restart: unless-stopped
+    networks:
+      - actual-net
+
+  caddy:
+    image: caddy:alpine
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./caddy_data:/data
+      - ./caddy_config:/config
+    networks:
+      - actual-net
+
+  hornbill:
+    build: ./src/hornbill
+    container_name: hornbill
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - DB_PATH=/data/truelayer.db
+      - ZAZU_URL=http://zazu:3000
+    volumes:
+      - ./hornbill-data:/data
+    networks:
+      - actual-net
+
+  zazu:
+    build: ./src/zazu
+    container_name: zazu
+    restart: unless-stopped
+    environment:
+      - PORT=3000
+      - ACTUAL_URL=http://actual:5006
+      - BUDGET_ID=${BUDGET_ID}
+      - FILE_PASSWORD=${FILE_PASSWORD}
+    networks:
+      - actual-net
+
+  duckdns:
+    image: lscr.io/linuxserver/duckdns:latest
+    container_name: duckdns
+    environment:
+      - SUBDOMAINS=${DUCKDNS_SUBDOMAINS}
+      - TOKEN=${DUCKDNS_TOKEN}
+      - LOG_FILE=false
+    restart: unless-stopped
+    networks:
+      - actual-net
+
+networks:
+  actual-net:

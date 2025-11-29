@@ -1,0 +1,36 @@
+*.db
+*.env
+
+migration/
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.venv
+
+# TypeScript
+node_modules/
+dist/
+build/
+
+# macOS
+.DS_Store
+*.auto.tfvars
+.terraform*
+.ruff_cache/
+.vscode/
+
+*/zazu/data/*
+
+# Terraform state and variables
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/terraform.tfvars
+**/*.tfstate
+**/*.tfstate.backup
+**/*.auto.tfvars

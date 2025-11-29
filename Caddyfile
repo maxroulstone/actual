@@ -1,0 +1,9 @@
+{
+    # Global options
+    email max@the-shack.net
+}
+
+# Actual Budget
+maxroulstone.duckdns.org {
+    reverse_proxy actual:5006
+}
