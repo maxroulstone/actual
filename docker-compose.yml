@@ -46,6 +46,8 @@ services:
       - ACTUAL_URL=http://actual:5006
       - BUDGET_ID=${BUDGET_ID}
       - FILE_PASSWORD=${FILE_PASSWORD}
+    volumes:
+      - ./zazu-data:/app/data
     networks:
       - actual-net
 

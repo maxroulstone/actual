@@ -10,6 +10,9 @@ RUN npm install
 
 # Copy source code
 COPY src ./src
+# Ensure runtime data directory exists and copy any seeded data
+RUN mkdir -p /app/data
+COPY data ./data
 
 # Build the project
 RUN npm run build
