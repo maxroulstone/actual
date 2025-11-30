@@ -28,6 +28,8 @@ services:
     build: ./src/hornbill
     container_name: hornbill
     restart: unless-stopped
+    ports:
+      - "8000:8000"
     env_file:
       - .env
     environment:
@@ -41,6 +43,8 @@ services:
     build: ./src/zazu
     container_name: zazu
     restart: unless-stopped
+    ports:
+      - "3000:3000"
     environment:
       - PORT=3000
       - ACTUAL_URL=http://actual:5006
