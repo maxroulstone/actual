@@ -7,6 +7,13 @@ from utils import TrueLayer, Database
 import logging
 from datetime import datetime
 
+# Configure root logging to emit INFO to stdout with timestamps
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "INFO"),
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    force=True,
+)
+
 app = fastapi.FastAPI()
 
 
@@ -98,6 +105,7 @@ async def periodic_transactions_import():
     """Background task that imports all accounts every configured interval."""
     interval = int(os.getenv("TRANSACTIONS_IMPORT_INTERVAL_SECONDS", "3600"))
     logging.info(f"Starting periodic transactions import task (interval={interval}s)")
+    await asyncio.sleep(30)  # Initial delay to allow startup
     while True:
         start = datetime.now()
         try:
