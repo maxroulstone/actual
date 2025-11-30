@@ -65,7 +65,7 @@ class Database(ABC):
                     scope TEXT NOT NULL,
                     expires_at INTEGER NOT NULL,
                     updated_at INTEGER NOT NULL,
-                    PRIMARY KEY (provider, account)
+                    PRIMARY KEY (provider, institution)
                 )
                 """
             )
@@ -78,7 +78,9 @@ class Database(ABC):
                     institution TEXT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, 
-                    truelayer_account_id varchar)
+                    truelayer_account_id TEXT,
+                    actual_account_id TEXT
+                )
                 """
             )
             conn.commit()
