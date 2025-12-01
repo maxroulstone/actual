@@ -55,16 +55,5 @@ services:
     networks:
       - actual-net
 
-  duckdns:
-    image: lscr.io/linuxserver/duckdns:latest
-    container_name: duckdns
-    environment:
-      - SUBDOMAINS=${DUCKDNS_SUBDOMAINS}
-      - TOKEN=${DUCKDNS_TOKEN}
-      - LOG_FILE=false
-    restart: unless-stopped
-    networks:
-      - actual-net
-
 networks:
   actual-net:
