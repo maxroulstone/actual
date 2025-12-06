@@ -5,7 +5,7 @@ import asyncio
 from fastapi import HTTPException
 from utils import TrueLayer, Database
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Configure root logging to emit INFO to stdout with timestamps
 logging.basicConfig(
@@ -28,7 +28,7 @@ def import_transactions(institution: str, account: str):
 
     transactions = client.list_transactions(
         account,
-        date_from="2025-11-01",
+        date_from=(datetime.now()-timedelta(days=7)).strftime("%Y-%m-%d"),
         date_to=datetime.now().strftime("%Y-%m-%d"),
     )
     logging.info(f"Fetched {len(transactions)} transactions from TrueLayer")

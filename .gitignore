@@ -10,6 +10,7 @@ __pycache__/
 dist/
 build/
 *.venv
+*test
 
 # TypeScript
 node_modules/
