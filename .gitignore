@@ -35,3 +35,9 @@ terraform/terraform.tfvars
 **/*.tfstate
 **/*.tfstate.backup
 **/*.auto.tfvars
+
+hornbill-data/
+zazu-data/
+actual-data/
+caddy_data/
+caddy_config/
