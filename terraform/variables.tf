@@ -26,3 +26,9 @@ variable "disk_size_gb" {
   type        = number
   default     = 20
 }
+
+variable "allowed_ssh_ip" {
+  description = "CIDR block allowed for SSH (e.g., 203.0.113.45/32 for single IP)"
+  type        = string
+}
+

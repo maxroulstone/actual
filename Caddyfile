@@ -1,8 +1,11 @@
 {
-    # Global options
     email max@the-shack.net
 }
 
 budget.maxroulstone.com {
+    basicauth / {
+        budget {env.CADDY_AUTH_HASH}
+    }
+
     reverse_proxy actual:5006
 }

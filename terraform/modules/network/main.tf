@@ -25,6 +25,13 @@ resource "google_compute_firewall" "allow_ssh" {
     ports    = ["22"]
   }
 
-  source_ranges = ["0.0.0.0/0"]
+  source_ranges = [var.allowed_ssh_ip]
   target_tags   = ["ssh-server"]
+}
+
+resource "google_compute_address" "vm_static_ip" {
+  name   = "budget-server-static-ip"
+  region = var.region
+
+  depends_on = [google_compute_network.vpc_network]
 }

@@ -1,4 +1,3 @@
-# --- Enable APIs ---
 resource "google_project_service" "compute" {
   service            = "compute.googleapis.com"
   disable_on_destroy = false
@@ -10,7 +9,9 @@ resource "google_project_service" "cloudresourcemanager" {
 }
 
 module "network" {
-  source = "./modules/network"
+  source         = "./modules/network"
+  region         = var.region
+  allowed_ssh_ip = var.allowed_ssh_ip
   depends_on = [
     google_project_service.compute,
     google_project_service.cloudresourcemanager
@@ -33,7 +34,9 @@ module "compute" {
   machine_type        = var.machine_type
   network_name        = module.network.network_name
   data_disk_self_link = module.storage.disk_self_link
+  static_ip_address   = module.network.static_ip_address
   depends_on = [
     google_project_service.compute
   ]
 }
+

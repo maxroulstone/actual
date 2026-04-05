@@ -2,6 +2,7 @@
 *.env
 
 migration/
+
 # Python
 __pycache__/
 *.py[cod]
@@ -19,25 +20,40 @@ build/
 
 # macOS
 .DS_Store
+
+# Terraform
+terraform.tfvars
+terraform.tfvars.json
+*.tfvars
+*.tfvars.json
+.terraform/
+.terraform/
+.terraform.lock.hcl
 *.auto.tfvars
-.terraform*
-.ruff_cache/
+*.tfstate
+*.tfstate.backup
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# IDE
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
 
+# Data directories
 */zazu/data/*
-
-# Terraform state and variables
-terraform/*.tfstate
-terraform/*.tfstate.backup
-terraform/terraform.tfstate
-terraform/terraform.tfstate.backup
-terraform/terraform.tfvars
-**/*.tfstate
-**/*.tfstate.backup
-**/*.auto.tfvars
-
 hornbill-data/
 zazu-data/
 actual-data/
 caddy_data/
 caddy_config/
+
+# Cache
+.ruff_cache/
+

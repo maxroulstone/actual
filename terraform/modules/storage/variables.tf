@@ -7,7 +7,6 @@ variable "disk_name" {
 variable "disk_size_gb" {
   description = "Size of the disk in GB"
   type        = number
-  default     = 10
 }
 
 variable "zone" {

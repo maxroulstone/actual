@@ -20,8 +20,12 @@ resource "google_compute_instance" "vm_instance" {
   network_interface {
     network = var.network_name
     access_config {
-      # Ephemeral public IP
+      nat_ip = var.static_ip_address
     }
+  }
+
+  lifecycle {
+    ignore_changes = [metadata["ssh-keys"]]
   }
 
   metadata_startup_script = <<-EOF

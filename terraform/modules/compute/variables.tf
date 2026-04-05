@@ -7,7 +7,6 @@ variable "instance_name" {
 variable "machine_type" {
   description = "Machine type for the VM"
   type        = string
-  default     = "e2-micro"
 }
 
 variable "zone" {
@@ -22,5 +21,10 @@ variable "network_name" {
 
 variable "data_disk_self_link" {
   description = "Self link of the persistent data disk"
+  type        = string
+}
+
+variable "static_ip_address" {
+  description = "The static IP address to assign to the VM"
   type        = string
 }
