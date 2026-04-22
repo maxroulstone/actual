@@ -7,7 +7,7 @@ dotenv.config(); // Load .env file if present
 // --- ENV VARIABLES ---
 const SERVER_URL = process.env.ACTUAL_URL!;
 const BUDGET_ID = process.env.BUDGET_ID!;
-const FILE_PASSWORD = process.env.FILE_PASSWORD || undefined;
+const FILE_PASSWORD = process.env.FILE_PASSWORD!;
 
 // --- TYPES ---
 interface TrueLayerMeta {
@@ -36,7 +36,7 @@ interface ActualTransaction {
 // --- CONVERTER ---
 function convertTrueLayerToActual(
   t: TrueLayerTransaction,
-  accountId: string
+  accountId: string,
 ): ActualTransaction {
   let amount = t.amount;
 
@@ -117,11 +117,11 @@ app.post("/import", async (req: Request, res: Response) => {
     await actual.downloadBudget(BUDGET_ID);
 
     const converted = transactions.map((t) =>
-      convertTrueLayerToActual(t, req.body.account_id)
+      convertTrueLayerToActual(t, req.body.account_id),
     );
     const result = await actual.importTransactions(
       req.body.account_id,
-      converted
+      converted,
     );
 
     await actual.shutdown();
