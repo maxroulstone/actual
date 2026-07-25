@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 import os
 import time
+from urllib.parse import urlencode
 from typing import Optional
 import requests
 from pydantic import BaseModel
@@ -26,7 +27,7 @@ class TrueLayer:
 
     TOKEN_SKEW_SECONDS = 60
 
-    def __init__(self, *, institution: str):
+    def __init__(self, *, institution: str, ensure_tokens_ready: bool = True):
         self.config = TrueLayerConfig(
             client_id=os.getenv("TRUE_LAYER_CLIENT_ID", ""),
             client_secret=os.getenv("TRUE_LAYER_CLIENT_SECRET", ""),
@@ -40,7 +41,8 @@ class TrueLayer:
         # Use SQLite-backed store by default; support multi-account with a logical account
         self.db: Database = Database(institution=institution)
 
-        self._ensure_tokens_ready()
+        if ensure_tokens_ready:
+            self._ensure_tokens_ready()
 
     def _ensure_tokens_ready(self) -> None:
         tokens = self.db.get_token()
@@ -60,7 +62,7 @@ class TrueLayer:
                 refreshed = self._refresh_tokens(tokens.refresh_token)
                 self.db.save_token(refreshed)
 
-    def _exchange_code_for_tokens(self, code: str) -> TokenData:
+    def _exchange_code_for_tokens(self, code: str, redirect_uri: str | None = None) -> TokenData:
         url = "https://auth.truelayer.com/connect/token"
         headers = {"content-type": "application/x-www-form-urlencoded"}
         payload = {
@@ -68,7 +70,9 @@ class TrueLayer:
             "client_id": self.config.client_id,
             "client_secret": self.config.client_secret,
             "code": code,
-            "redirect_uri": "https://console.truelayer.com/redirect-page",
+            "redirect_uri": redirect_uri or os.getenv(
+                "TRUELAYER_REDIRECT_URI", "https://console.truelayer.com/redirect-page"
+            ),
         }
         response = requests.post(url, headers=headers, data=payload)
         data = response.json()
@@ -84,6 +88,33 @@ class TrueLayer:
             scope=data["scope"],
             expires_at=expires_at,
         )
+
+    def exchange_authorization_code(self, code: str) -> TokenData:
+        """Exchange a browser callback code and persist the replacement token set."""
+        token_data = self._exchange_code_for_tokens(
+            code, redirect_uri=os.environ["TRUELAYER_REDIRECT_URI"]
+        )
+        self.db.save_token(token_data)
+        return token_data
+
+    def authorization_url(self, *, state: str, provider_id: str) -> str:
+        redirect_uri = os.getenv("TRUELAYER_REDIRECT_URI")
+        if not redirect_uri:
+            raise RuntimeError("TRUELAYER_REDIRECT_URI must be set for bank reauthorisation")
+        query = urlencode(
+            {
+                "response_type": "code",
+                "client_id": self.config.client_id,
+                "redirect_uri": redirect_uri,
+                "scope": os.getenv(
+                    "TRUELAYER_AUTH_SCOPE",
+                    "info accounts balance transactions cards offline_access",
+                ),
+                "state": state,
+                "providers": provider_id,
+            }
+        )
+        return f"https://auth.truelayer.com/?{query}"
 
     def _refresh_tokens(self, refresh_token: str) -> TokenData:
         url = "https://auth.truelayer.com/connect/token"

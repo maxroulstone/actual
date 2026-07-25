@@ -4,7 +4,6 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  SidebarGroupAction,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
@@ -14,9 +13,7 @@ import {
 } from "@/components/ui/sidebar";
 import {
   ChevronDown,
-  User2Icon,
   LayoutDashboard,
-  DollarSign,
   Coins,
 } from "lucide-react";
 import {

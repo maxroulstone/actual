@@ -2,6 +2,7 @@ import os
 import sqlite3
 import stat
 import time
+import hashlib
 from abc import ABC
 from pathlib import Path
 from typing import Optional
@@ -37,7 +38,12 @@ class Database(ABC):
         elif os.getenv("DB_PATH"):
             self.db_path = Path(os.getenv("DB_PATH"))
         else:
-            self.db_path = Path(__file__).resolve().parent / "truelayer.db"
+            persistent_data_dir = Path("/data")
+            self.db_path = (
+                persistent_data_dir / "truelayer.db"
+                if persistent_data_dir.is_dir()
+                else Path(__file__).resolve().parent / "truelayer.db"
+            )
 
         self.institution = institution
         self._init_db()
@@ -66,6 +72,27 @@ class Database(ABC):
                     expires_at INTEGER NOT NULL,
                     updated_at INTEGER NOT NULL,
                     PRIMARY KEY (provider, institution)
+                )
+                """
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS institution_health (
+                    institution TEXT PRIMARY KEY,
+                    last_success_at INTEGER,
+                    last_failure_at INTEGER,
+                    last_failure_message TEXT
+                )
+                """
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS oauth_states (
+                    state_hash TEXT PRIMARY KEY,
+                    institution TEXT NOT NULL,
+                    expires_at INTEGER NOT NULL,
+                    consumed_at INTEGER,
+                    created_at INTEGER NOT NULL
                 )
                 """
             )
@@ -109,6 +136,17 @@ class Database(ABC):
                 scope=row["scope"],
                 expires_at=int(row["expires_at"]),
             )
+        finally:
+            conn.close()
+
+    def get_token_updated_at(self) -> Optional[int]:
+        conn = self._connect()
+        try:
+            row = conn.execute(
+                "SELECT updated_at FROM tokens WHERE provider = ? AND institution = ?",
+                ("truelayer", self.institution),
+            ).fetchone()
+            return int(row["updated_at"]) if row else None
         finally:
             conn.close()
 
@@ -197,5 +235,114 @@ class Database(ABC):
             )
             rows = cur.fetchall()
             return [(row["name"], row["institution"]) for row in rows]
+        finally:
+            conn.close()
+
+    def record_import_success(self) -> None:
+        now = int(time.time())
+        conn = self._connect()
+        try:
+            conn.execute(
+                """
+                INSERT INTO institution_health (institution, last_success_at, last_failure_at, last_failure_message)
+                VALUES (?, ?, NULL, NULL)
+                ON CONFLICT(institution) DO UPDATE SET
+                    last_success_at=excluded.last_success_at,
+                    last_failure_at=NULL,
+                    last_failure_message=NULL
+                """,
+                (self.institution, now),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def record_import_failure(self, message: str) -> None:
+        now = int(time.time())
+        conn = self._connect()
+        try:
+            conn.execute(
+                """
+                INSERT INTO institution_health (institution, last_success_at, last_failure_at, last_failure_message)
+                VALUES (?, NULL, ?, ?)
+                ON CONFLICT(institution) DO UPDATE SET
+                    last_failure_at=excluded.last_failure_at,
+                    last_failure_message=excluded.last_failure_message
+                """,
+                (self.institution, now, message[:500]),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def clear_institution_failure(self) -> None:
+        """Mark a successful reauthorisation as recovered without faking an import."""
+        conn = self._connect()
+        try:
+            conn.execute(
+                """
+                INSERT INTO institution_health (institution, last_success_at, last_failure_at, last_failure_message)
+                VALUES (?, NULL, NULL, NULL)
+                ON CONFLICT(institution) DO UPDATE SET
+                    last_failure_at=NULL,
+                    last_failure_message=NULL
+                """,
+                (self.institution,),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def get_institution_health(self) -> dict:
+        conn = self._connect()
+        try:
+            row = conn.execute(
+                """
+                SELECT last_success_at, last_failure_at, last_failure_message
+                FROM institution_health WHERE institution = ?
+                """,
+                (self.institution,),
+            ).fetchone()
+            return dict(row) if row else {
+                "last_success_at": None,
+                "last_failure_at": None,
+                "last_failure_message": None,
+            }
+        finally:
+            conn.close()
+
+    @staticmethod
+    def _state_hash(state: str) -> str:
+        return hashlib.sha256(state.encode("utf-8")).hexdigest()
+
+    def create_oauth_state(self, state: str, expires_at: int) -> None:
+        now = int(time.time())
+        conn = self._connect()
+        try:
+            conn.execute("DELETE FROM oauth_states WHERE expires_at < ? OR consumed_at IS NOT NULL", (now,))
+            conn.execute(
+                """
+                INSERT INTO oauth_states (state_hash, institution, expires_at, consumed_at, created_at)
+                VALUES (?, ?, ?, NULL, ?)
+                """,
+                (self._state_hash(state), self.institution, expires_at, now),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def consume_oauth_state(self, state: str) -> bool:
+        now = int(time.time())
+        conn = self._connect()
+        try:
+            result = conn.execute(
+                """
+                UPDATE oauth_states SET consumed_at = ?
+                WHERE state_hash = ? AND institution = ? AND consumed_at IS NULL AND expires_at >= ?
+                """,
+                (now, self._state_hash(state), self.institution, now),
+            )
+            conn.commit()
+            return result.rowcount == 1
         finally:
             conn.close()
