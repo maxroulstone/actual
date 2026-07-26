@@ -33,17 +33,15 @@ class Database(ABC):
     """
 
     def __init__(self, institution: str = None, db_path: Optional[Path] = None):
-        if db_path:
+        if db_path is not None:
             self.db_path = Path(db_path)
-        elif os.getenv("DB_PATH"):
-            self.db_path = Path(os.getenv("DB_PATH"))
         else:
-            persistent_data_dir = Path("/data")
-            self.db_path = (
-                persistent_data_dir / "truelayer.db"
-                if persistent_data_dir.is_dir()
-                else Path(__file__).resolve().parent / "truelayer.db"
-            )
+            configured_path = os.getenv("DB_PATH")
+            if not configured_path:
+                raise RuntimeError(
+                    "DB_PATH must be configured; use /data/truelayer.db in Docker"
+                )
+            self.db_path = Path(configured_path)
 
         self.institution = institution
         self._init_db()

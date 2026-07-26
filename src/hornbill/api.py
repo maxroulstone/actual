@@ -35,16 +35,7 @@ DEFAULT_INSTITUTIONS = [
 
 
 def configured_institutions() -> list[InstitutionConfig]:
-    """Read direct-bank mappings only from server-side environment configuration."""
-    import json
-
-    raw = os.getenv("TRUELAYER_INSTITUTIONS_JSON")
-    if raw:
-        try:
-            return [InstitutionConfig.model_validate(item) for item in json.loads(raw)]
-        except (ValueError, TypeError) as exc:
-            raise RuntimeError("TRUELAYER_INSTITUTIONS_JSON is invalid") from exc
-
+    """Return the three direct-bank routes this single-user app supports."""
     return [
         institution.model_copy(
             update={

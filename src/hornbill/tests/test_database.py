@@ -1,7 +1,9 @@
 import tempfile
 import time
 import unittest
+import os
 from pathlib import Path
+from unittest.mock import patch
 
 from utils.database import Database, TokenData
 
@@ -22,6 +24,11 @@ class DatabaseTests(unittest.TestCase):
 
         self.db.create_oauth_state("expired-state", int(time.time()) - 1)
         self.assertFalse(self.db.consume_oauth_state("expired-state"))
+
+    def test_default_database_path_must_be_explicitly_configured(self):
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaisesRegex(RuntimeError, "DB_PATH must be configured"):
+                Database(institution="monzo")
 
     def test_health_and_token_metadata_do_not_expose_token_values(self):
         self.db.save_token(

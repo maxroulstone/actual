@@ -11,12 +11,16 @@ Before deploying, add these values to the root `.env` file and allowlist the
 callback URL in the TrueLayer Console:
 
 ```dotenv
+DB_PATH=/data/truelayer.db
 TRUELAYER_REDIRECT_URI=https://admin.budget.maxroulstone.com/api/truelayer/callback
 ADMIN_TOKENS_URL=https://admin.budget.maxroulstone.com/budget/tokens
 TRUELAYER_MONZO_PROVIDER_ID=<TrueLayer provider ID>
 TRUELAYER_BARCLAYS_PROVIDER_ID=<TrueLayer provider ID>
 TRUELAYER_AMEX_PROVIDER_ID=<TrueLayer provider ID>
 ```
+
+The `*_PROVIDER_ID` values are TrueLayer's public identifiers for the direct
+bank route. They are not your access/refresh tokens and are not secrets.
 
 Set each provider ID from the TrueLayer Console or provider documentation. The
 callback is deliberately unauthenticated so TrueLayer can redirect to it; it
