@@ -9,3 +9,27 @@ budget.maxroulstone.com {
 
     reverse_proxy actual:5006
 }
+
+admin.budget.maxroulstone.com {
+    # TrueLayer redirects here after bank authorisation. Hornbill validates the
+    # signed-in user's short-lived state token before doing any token exchange.
+    @truelayer_callback path /api/truelayer/callback
+    handle @truelayer_callback {
+        reverse_proxy hornbill:8000
+    }
+
+    @hornbill_api path /api/*
+    handle @hornbill_api {
+        basicauth {
+            budget {env.CADDY_AUTH_HASH}
+        }
+        reverse_proxy hornbill:8000
+    }
+
+    handle {
+        basicauth {
+            budget {env.CADDY_AUTH_HASH}
+        }
+        reverse_proxy admin:3000
+    }
+}

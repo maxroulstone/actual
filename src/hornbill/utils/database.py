@@ -2,6 +2,7 @@ import os
 import sqlite3
 import stat
 import time
+import hashlib
 from abc import ABC
 from pathlib import Path
 from typing import Optional
@@ -31,16 +32,28 @@ class Database(ABC):
     - The database file is created with 600 permissions when first created.
     """
 
-    def __init__(self, institution: str = None, db_path: Optional[Path] = None):
+    def __init__(
+        self, institution: Optional[str] = None, db_path: Optional[Path] = None
+    ):
         if db_path:
             self.db_path = Path(db_path)
-        elif os.getenv("DB_PATH"):
-            self.db_path = Path(os.getenv("DB_PATH"))
         else:
-            self.db_path = Path(__file__).resolve().parent / "truelayer.db"
+            configured_path = os.getenv("DB_PATH")
+            if not configured_path:
+                raise RuntimeError(
+                    "DB_PATH must be configured; use /data/truelayer.db in Docker"
+                )
+            self.db_path = Path(configured_path)
 
         self.institution = institution
         self._init_db()
+
+    def _require_institution(self) -> str:
+        if not self.institution:
+            raise RuntimeError(
+                "An institution is required for institution-scoped database operations"
+            )
+        return self.institution
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path)
@@ -71,6 +84,27 @@ class Database(ABC):
             )
             conn.execute(
                 """
+                CREATE TABLE IF NOT EXISTS institution_health (
+                    institution TEXT PRIMARY KEY,
+                    last_success_at INTEGER,
+                    last_failure_at INTEGER,
+                    last_failure_message TEXT
+                )
+                """
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS oauth_states (
+                    state_hash TEXT PRIMARY KEY,
+                    institution TEXT NOT NULL,
+                    expires_at INTEGER NOT NULL,
+                    consumed_at INTEGER,
+                    created_at INTEGER NOT NULL
+                )
+                """
+            )
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS accounts (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL,
@@ -93,11 +127,12 @@ class Database(ABC):
                 pass
 
     def get_token(self) -> Optional[TokenData]:
+        institution = self._require_institution()
         conn = self._connect()
         try:
             cur = conn.execute(
                 "SELECT access_token, refresh_token, token_type, scope, expires_at FROM tokens WHERE institution = ?",
-                (self.institution,),
+                (institution,),
             )
             row = cur.fetchone()
             if not row:
@@ -112,7 +147,20 @@ class Database(ABC):
         finally:
             conn.close()
 
+    def get_token_updated_at(self) -> Optional[int]:
+        institution = self._require_institution()
+        conn = self._connect()
+        try:
+            row = conn.execute(
+                "SELECT updated_at FROM tokens WHERE provider = ? AND institution = ?",
+                ("truelayer", institution),
+            ).fetchone()
+            return int(row["updated_at"]) if row else None
+        finally:
+            conn.close()
+
     def save_token(self, token_data: TokenData) -> None:
+        institution = self._require_institution()
         now = int(time.time())
         conn = self._connect()
         try:
@@ -130,7 +178,7 @@ class Database(ABC):
                 """,
                 (
                     "truelayer",
-                    self.institution,
+                    institution,
                     token_data.access_token,
                     token_data.refresh_token,
                     token_data.token_type,
@@ -144,43 +192,46 @@ class Database(ABC):
             conn.close()
 
     def get_account_id(self, account_name: str) -> str:
+        institution = self._require_institution()
         conn = self._connect()
         try:
             cur = conn.execute(
                 "SELECT truelayer_account_id FROM accounts WHERE name = ? AND institution = ?",
-                (account_name, self.institution),
+                (account_name, institution),
             )
             row = cur.fetchone()
             if not row:
                 raise RuntimeError(
-                    f"No account found with name {account_name} for institution {self.institution}"
+                    f"No account found with name {account_name} for institution {institution}"
                 )
             return row["truelayer_account_id"]
         finally:
             conn.close()
 
     def is_credit_card(self, account_name: str) -> bool:
+        institution = self._require_institution()
         conn = self._connect()
         try:
             cur = conn.execute(
                 "SELECT type FROM accounts WHERE name = ? AND institution = ?",
-                (account_name, self.institution),
+                (account_name, institution),
             )
             row = cur.fetchone()
             if not row:
                 raise RuntimeError(
-                    f"No account found with name {account_name} for institution {self.institution}"
+                    f"No account found with name {account_name} for institution {institution}"
                 )
             return row["type"] == "credit"
         finally:
             conn.close()
 
     def get_actual_account_id(self, account_name: str) -> Optional[str]:
+        institution = self._require_institution()
         conn = self._connect()
         try:
             cur = conn.execute(
                 "SELECT actual_account_id FROM accounts WHERE name = ? AND institution = ?",
-                (account_name, self.institution),
+                (account_name, institution),
             )
             row = cur.fetchone()
             if not row:
@@ -197,5 +248,120 @@ class Database(ABC):
             )
             rows = cur.fetchall()
             return [(row["name"], row["institution"]) for row in rows]
+        finally:
+            conn.close()
+
+    def record_import_success(self) -> None:
+        institution = self._require_institution()
+        now = int(time.time())
+        conn = self._connect()
+        try:
+            conn.execute(
+                """
+                INSERT INTO institution_health (institution, last_success_at, last_failure_at, last_failure_message)
+                VALUES (?, ?, NULL, NULL)
+                ON CONFLICT(institution) DO UPDATE SET
+                    last_success_at=excluded.last_success_at,
+                    last_failure_at=NULL,
+                    last_failure_message=NULL
+                """,
+                (institution, now),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def record_import_failure(self, message: str) -> None:
+        institution = self._require_institution()
+        now = int(time.time())
+        conn = self._connect()
+        try:
+            conn.execute(
+                """
+                INSERT INTO institution_health (institution, last_success_at, last_failure_at, last_failure_message)
+                VALUES (?, NULL, ?, ?)
+                ON CONFLICT(institution) DO UPDATE SET
+                    last_failure_at=excluded.last_failure_at,
+                    last_failure_message=excluded.last_failure_message
+                """,
+                (institution, now, message[:500]),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def clear_institution_failure(self) -> None:
+        """Mark a successful reauthorisation as recovered without faking an import."""
+        institution = self._require_institution()
+        conn = self._connect()
+        try:
+            conn.execute(
+                """
+                INSERT INTO institution_health (institution, last_success_at, last_failure_at, last_failure_message)
+                VALUES (?, NULL, NULL, NULL)
+                ON CONFLICT(institution) DO UPDATE SET
+                    last_failure_at=NULL,
+                    last_failure_message=NULL
+                """,
+                (institution,),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def get_institution_health(self) -> dict:
+        institution = self._require_institution()
+        conn = self._connect()
+        try:
+            row = conn.execute(
+                """
+                SELECT last_success_at, last_failure_at, last_failure_message
+                FROM institution_health WHERE institution = ?
+                """,
+                (institution,),
+            ).fetchone()
+            return dict(row) if row else {
+                "last_success_at": None,
+                "last_failure_at": None,
+                "last_failure_message": None,
+            }
+        finally:
+            conn.close()
+
+    @staticmethod
+    def _state_hash(state: str) -> str:
+        return hashlib.sha256(state.encode("utf-8")).hexdigest()
+
+    def create_oauth_state(self, state: str, expires_at: int) -> None:
+        institution = self._require_institution()
+        now = int(time.time())
+        conn = self._connect()
+        try:
+            conn.execute("DELETE FROM oauth_states WHERE expires_at < ? OR consumed_at IS NOT NULL", (now,))
+            conn.execute(
+                """
+                INSERT INTO oauth_states (state_hash, institution, expires_at, consumed_at, created_at)
+                VALUES (?, ?, ?, NULL, ?)
+                """,
+                (self._state_hash(state), institution, expires_at, now),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def consume_oauth_state(self, state: str) -> bool:
+        institution = self._require_institution()
+        now = int(time.time())
+        conn = self._connect()
+        try:
+            result = conn.execute(
+                """
+                UPDATE oauth_states SET consumed_at = ?
+                WHERE state_hash = ? AND institution = ? AND consumed_at IS NULL AND expires_at >= ?
+                """,
+                (now, self._state_hash(state), institution, now),
+            )
+            conn.commit()
+            return result.rowcount == 1
         finally:
             conn.close()

@@ -12,6 +12,9 @@ dist/
 build/
 *.venv
 *test
+!src/hornbill/tests/
+!src/hornbill/tests/**
+src/hornbill/tests/__pycache__/
 
 # TypeScript
 node_modules/
@@ -56,4 +59,3 @@ caddy_config/
 
 # Cache
 .ruff_cache/
-
