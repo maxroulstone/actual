@@ -32,8 +32,8 @@ class Database(ABC):
     - The database file is created with 600 permissions when first created.
     """
 
-    def __init__(self, institution: str = None, db_path: Optional[Path] = None):
-        if db_path is not None:
+    def __init__(self, institution: str, db_path: Optional[Path] = None):
+        if db_path:
             self.db_path = Path(db_path)
         else:
             configured_path = os.getenv("DB_PATH")
