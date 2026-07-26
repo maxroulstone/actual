@@ -26,3 +26,10 @@ Set each provider ID from the TrueLayer Console or provider documentation. The
 callback is deliberately unauthenticated so TrueLayer can redirect to it; it
 accepts only a short-lived, single-use state created by an authenticated admin
 request.
+
+## Local environment
+
+For an isolated local stack, see [local/README.md](local/README.md). From that
+directory, `docker compose up -d --build` starts the admin panel at
+http://localhost:8080 and Actual at http://localhost:5006 without using the
+production Compose configuration or volumes.
