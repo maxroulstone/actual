@@ -30,6 +30,13 @@ class DatabaseTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "DB_PATH must be configured"):
                 Database(institution="monzo")
 
+    def test_shared_database_access_does_not_require_an_institution(self):
+        shared = Database(db_path=self.path)
+
+        self.assertEqual(shared.get_actual_accounts(), [])
+        with self.assertRaisesRegex(RuntimeError, "institution is required"):
+            shared.get_token()
+
     def test_health_and_token_metadata_do_not_expose_token_values(self):
         self.db.save_token(
             TokenData(

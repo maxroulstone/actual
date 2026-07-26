@@ -148,12 +148,7 @@ def list_cards(institution: str):
 
 def import_all_accounts():
     """Import transactions for all known accounts (blocking)."""
-    # Accounts share one SQLite database. The repository still requires an
-    # institution because its token and health methods are institution-scoped;
-    # get_actual_accounts itself intentionally returns rows for every bank.
-    accounts = Database(
-        institution=DEFAULT_INSTITUTIONS[0].slug
-    ).get_actual_accounts()
+    accounts = Database().get_actual_accounts()
     institutions = set()
     failed_institutions = set()
     for name, institution in accounts:
