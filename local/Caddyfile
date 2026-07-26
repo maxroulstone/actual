@@ -1,17 +1,17 @@
 # Local-only reverse proxy. It intentionally has no authentication because it
 # listens on localhost only; production authentication remains in ../Caddyfile.
 :80 {
-    @truelayer_callback path /api/truelayer/callback
-    handle @truelayer_callback {
-        reverse_proxy hornbill:8000
-    }
+	@truelayer_callback path /api/truelayer/callback
+	handle @truelayer_callback {
+		reverse_proxy hornbill:8000
+	}
 
-    @hornbill_api path /api/*
-    handle @hornbill_api {
-        reverse_proxy hornbill:8000
-    }
+	@hornbill_api path /api/*
+	handle @hornbill_api {
+		reverse_proxy hornbill:8000
+	}
 
-    handle {
-        reverse_proxy admin:3000
-    }
+	handle {
+		reverse_proxy admin:3000
+	}
 }
