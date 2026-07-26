@@ -1,12 +1,10 @@
-FROM node:20-bookworm-slim AS build
+FROM node:20-alpine AS build
 
 WORKDIR /app
 
 # better-sqlite3 is a native dependency of the Actual API. Install its build
 # toolchain in this stage so npm can compile it if no prebuilt binary matches.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 make g++ \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache python3 make g++
 
 COPY package.json package-lock.json tsconfig.json ./
 RUN npm ci
@@ -15,7 +13,7 @@ COPY src ./src
 RUN npm run build
 RUN npm prune --omit=dev
 
-FROM node:20-bookworm-slim
+FROM node:20-alpine
 
 WORKDIR /app
 ENV NODE_ENV=production

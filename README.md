@@ -35,3 +35,23 @@ For an isolated local stack, see [local/README.md](local/README.md). From that
 directory, `docker compose up -d --build` starts the admin panel at
 http://localhost:8080 and Actual at http://localhost:5006 without using the
 production Compose configuration or volumes.
+
+## Deploying on a small server
+
+Compose builds services in parallel by default, which can temporarily require
+far more disk than the final runtime images. On storage-constrained hosts, clear
+only disposable Docker build data and build one service at a time:
+
+```bash
+docker builder prune --all --force
+COMPOSE_PARALLEL_LIMIT=1 docker compose build admin
+docker builder prune --all --force
+COMPOSE_PARALLEL_LIMIT=1 docker compose build zazu
+docker builder prune --all --force
+COMPOSE_PARALLEL_LIMIT=1 docker compose build hornbill
+docker compose up -d --no-build
+docker builder prune --all --force
+```
+
+These commands do not prune volumes. The `actual-data`, `hornbill-data`, and
+`zazu-data` bind-mounted directories are not removed.
