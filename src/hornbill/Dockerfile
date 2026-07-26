@@ -22,4 +22,6 @@ ENV PYTHONUNBUFFERED=1
 EXPOSE 8000
 
 # Run the application with explicit log level
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "info"]
+# OAuth callback query strings contain short-lived authorization codes. Keep
+# Uvicorn's request access log disabled so those codes never reach Docker logs.
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "info", "--no-access-log"]

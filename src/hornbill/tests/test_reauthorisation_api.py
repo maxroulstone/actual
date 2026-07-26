@@ -1,3 +1,4 @@
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,9 +11,15 @@ from utils.database import Database
 class FakeTrueLayer:
     exchanged_codes = []
     exchange_error = None
+    initialization_calls = []
 
     def __init__(self, *, institution, ensure_tokens_ready=True):
         self.institution = institution
+        self.initialization_calls.append((institution, ensure_tokens_ready))
+        if ensure_tokens_ready:
+            raise RuntimeError(
+                "Disconnected clients cannot initialize in token-ready mode"
+            )
 
     def authorization_url(self, *, state, provider_id):
         return f"https://bank.example/authorise?state={state}&provider={provider_id}"
@@ -32,6 +39,7 @@ class ReauthorisationApiTests(unittest.TestCase):
         )
         FakeTrueLayer.exchanged_codes = []
         FakeTrueLayer.exchange_error = None
+        FakeTrueLayer.initialization_calls = []
 
     def tearDown(self):
         self.directory.cleanup()
@@ -54,6 +62,10 @@ class ReauthorisationApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 303)
         self.assertEqual(response.headers["location"], "https://admin.example/tokens?result=success")
         self.assertEqual(FakeTrueLayer.exchanged_codes, ["one-time-code"])
+        self.assertEqual(
+            FakeTrueLayer.initialization_calls,
+            [("monzo", False), ("monzo", False)],
+        )
         self.assertIsNone(self.database("monzo").get_institution_health()["last_failure_at"])
 
     def test_callback_rejects_missing_or_reused_state(self):
@@ -73,6 +85,11 @@ class ReauthorisationApiTests(unittest.TestCase):
 
         self.assertNotIn("access_token", payload)
         self.assertNotIn("refresh_token", payload)
+
+    def test_periodic_import_handles_an_empty_shared_database(self):
+        with patch.dict(os.environ, {"DB_PATH": str(self.path)}, clear=True):
+            Database(institution="monzo")
+            api.import_all_accounts()
 
     def test_callback_records_provider_and_token_exchange_failures(self):
         def callback_url(**params):

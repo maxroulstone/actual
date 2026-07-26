@@ -148,7 +148,12 @@ def list_cards(institution: str):
 
 def import_all_accounts():
     """Import transactions for all known accounts (blocking)."""
-    accounts = Database().get_actual_accounts()
+    # Accounts share one SQLite database. The repository still requires an
+    # institution because its token and health methods are institution-scoped;
+    # get_actual_accounts itself intentionally returns rows for every bank.
+    accounts = Database(
+        institution=DEFAULT_INSTITUTIONS[0].slug
+    ).get_actual_accounts()
     institutions = set()
     failed_institutions = set()
     for name, institution in accounts:
@@ -258,7 +263,12 @@ def truelayer_callback(state: str | None = None, code: str | None = None, error:
         )
 
     try:
-        TrueLayer(institution=matching.slug).exchange_authorization_code(code)
+        # A reauthorisation callback must be able to create the first stored
+        # token set. Do not run the normal load/refresh path before exchanging
+        # the callback's one-time code.
+        TrueLayer(
+            institution=matching.slug, ensure_tokens_ready=False
+        ).exchange_authorization_code(code)
         Database(institution=matching.slug).clear_institution_failure()
     except Exception as exc:
         logging.exception("Token exchange failed for %s", matching.slug)

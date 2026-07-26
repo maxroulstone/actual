@@ -37,6 +37,12 @@ class TrueLayer:
             raise ValueError(
                 "TRUE_LAYER_CLIENT_ID and TRUE_LAYER_CLIENT_SECRET must be set"
             )
+        self.auth_base_url = os.getenv(
+            "TRUELAYER_AUTH_BASE_URL", "https://auth.truelayer.com"
+        ).rstrip("/")
+        self.api_base_url = os.getenv(
+            "TRUELAYER_API_BASE_URL", "https://api.truelayer.com"
+        ).rstrip("/")
 
         # Use SQLite-backed store by default; support multi-account with a logical account
         self.db: Database = Database(institution=institution)
@@ -63,7 +69,7 @@ class TrueLayer:
                 self.db.save_token(refreshed)
 
     def _exchange_code_for_tokens(self, code: str, redirect_uri: str | None = None) -> TokenData:
-        url = "https://auth.truelayer.com/connect/token"
+        url = f"{self.auth_base_url}/connect/token"
         headers = {"content-type": "application/x-www-form-urlencoded"}
         payload = {
             "grant_type": "authorization_code",
@@ -114,10 +120,10 @@ class TrueLayer:
                 "providers": provider_id,
             }
         )
-        return f"https://auth.truelayer.com/?{query}"
+        return f"{self.auth_base_url}/?{query}"
 
     def _refresh_tokens(self, refresh_token: str) -> TokenData:
-        url = "https://auth.truelayer.com/connect/token"
+        url = f"{self.auth_base_url}/connect/token"
         headers = {"content-type": "application/x-www-form-urlencoded"}
         payload = {
             "grant_type": "refresh_token",
@@ -141,7 +147,7 @@ class TrueLayer:
         )
 
     def _list_cards(self):
-        url = "https://api.truelayer.com/data/v1/cards"
+        url = f"{self.api_base_url}/data/v1/cards"
         headers = {
             "Authorization": f"Bearer {self.db.get_token().access_token}",
             "Content-Type": "application/json",
@@ -154,7 +160,7 @@ class TrueLayer:
         return response.json()
 
     def _list_accounts(self):
-        url = "https://api.truelayer.com/data/v1/accounts"
+        url = f"{self.api_base_url}/data/v1/accounts"
         headers = {
             "Authorization": f"Bearer {self.db.get_token().access_token}",
             "Content-Type": "application/json",
@@ -171,7 +177,7 @@ class TrueLayer:
     ):
         card_id = self.db.get_account_id(account_name)
 
-        url = f"https://api.truelayer.com/data/v1/cards/{card_id}/transactions"
+        url = f"{self.api_base_url}/data/v1/cards/{card_id}/transactions"
         headers = {
             "Authorization": f"Bearer {self.db.get_token().access_token}",
         }
@@ -194,7 +200,7 @@ class TrueLayer:
     ):
         account_id = self.db.get_account_id(account_name)
 
-        url = f"https://api.truelayer.com/data/v1/accounts/{account_id}/transactions"
+        url = f"{self.api_base_url}/data/v1/accounts/{account_id}/transactions"
         headers = {
             "Authorization": f"Bearer {self.db.get_token().access_token}",
         }

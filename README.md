@@ -14,6 +14,8 @@ callback URL in the TrueLayer Console:
 DB_PATH=/data/truelayer.db
 TRUELAYER_REDIRECT_URI=https://admin.budget.maxroulstone.com/api/truelayer/callback
 ADMIN_TOKENS_URL=https://admin.budget.maxroulstone.com/budget/tokens
+TRUELAYER_AUTH_BASE_URL=https://auth.truelayer.com
+TRUELAYER_API_BASE_URL=https://api.truelayer.com
 TRUELAYER_MONZO_PROVIDER_ID=<TrueLayer provider ID>
 TRUELAYER_BARCLAYS_PROVIDER_ID=<TrueLayer provider ID>
 TRUELAYER_AMEX_PROVIDER_ID=<TrueLayer provider ID>
