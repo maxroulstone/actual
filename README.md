@@ -38,20 +38,25 @@ production Compose configuration or volumes.
 
 ## Deploying on a small server
 
-Compose builds services in parallel by default, which can temporarily require
-far more disk than the final runtime images. On storage-constrained hosts, clear
-only disposable Docker build data and build one service at a time:
+Custom images are published automatically to GitHub Container Registry (GHCR)
+after every push to `main`. The production Compose file pulls these images; it
+does not build them on the server.
+
+If the GHCR packages are private, log in once with a GitHub classic personal
+access token that has only the `read:packages` scope:
 
 ```bash
-docker builder prune --all --force
-COMPOSE_PARALLEL_LIMIT=1 docker compose build admin
-docker builder prune --all --force
-COMPOSE_PARALLEL_LIMIT=1 docker compose build zazu
-docker builder prune --all --force
-COMPOSE_PARALLEL_LIMIT=1 docker compose build hornbill
-docker compose up -d --no-build
-docker builder prune --all --force
+echo "$GHCR_READ_TOKEN" | docker login ghcr.io -u maxroulstone --password-stdin
 ```
 
-These commands do not prune volumes. The `actual-data`, `hornbill-data`, and
-`zazu-data` bind-mounted directories are not removed.
+To update the server manually after an image is published:
+
+```bash
+git pull
+docker compose pull
+docker compose up -d --no-build
+```
+
+These commands do not remove the `actual-data`, `hornbill-data`, or `zazu-data`
+bind-mounted directories, the root `.env` file, or Caddy data
+(`caddy_data` and `caddy_config`).

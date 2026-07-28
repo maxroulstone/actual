@@ -1,6 +1,6 @@
 services:
   actual:
-    image: actualbudget/actual-server:latest
+    image: actualbudget/actual-server:26.7.0
     container_name: actual_server
     ports:
       - "5006:5006"
@@ -27,7 +27,7 @@ services:
       - actual-net
 
   hornbill:
-    build: ./src/hornbill
+    image: ghcr.io/maxroulstone/actual-hornbill:latest
     container_name: hornbill
     restart: unless-stopped
     env_file:
@@ -40,7 +40,7 @@ services:
       - actual-net
 
   admin:
-    build: ./src/admin
+    image: ghcr.io/maxroulstone/actual-admin:latest
     container_name: budget_admin
     restart: unless-stopped
     environment:
@@ -49,7 +49,7 @@ services:
       - actual-net
 
   zazu:
-    build: ./src/zazu
+    image: ghcr.io/maxroulstone/actual-zazu:latest
     container_name: zazu
     restart: unless-stopped
     ports:
