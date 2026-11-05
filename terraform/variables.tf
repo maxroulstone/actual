@@ -3,6 +3,12 @@ variable "project_id" {
   type        = string
 }
 
+variable "iap_ssh_users" {
+  description = "Email addresses of users allowed to open IAP tunnels. SSH authentication must be configured separately."
+  type        = set(string)
+  default     = []
+}
+
 variable "region" {
   description = "GCP Region"
   type        = string

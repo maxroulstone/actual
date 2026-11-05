@@ -8,6 +8,14 @@ resource "google_project_service" "cloudresourcemanager" {
   disable_on_destroy = false
 }
 
+module "users" {
+  source        = "./modules/users"
+  project_id    = var.project_id
+  iap_ssh_users = var.iap_ssh_users
+
+  depends_on = [google_project_service.cloudresourcemanager]
+}
+
 module "network" {
   source         = "./modules/network"
   region         = var.region
